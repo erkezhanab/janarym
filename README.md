@@ -163,13 +163,6 @@ generate_xcodeproj.py   generates Janarym.xcodeproj from mobile/
 
 Janarym is developed by the Enactus team at Astana IT University College.
 
-<!-- Fill in: name — role — what they built -->
-- **Yerkezhan Abil** — CTO — <!-- what you built yourself -->
-- **<name>** — <role> — <what they built>
-- **<name>** — <role> — <what they built>
-
-## Recognition
-
 - Technovation Girls 2026 — Global Semifinalist
 - Enactus Kazakhstan National Cup — 2nd Place, Early Stage League; selected for the Enactus World Cup 2026 (São Paulo)
 
