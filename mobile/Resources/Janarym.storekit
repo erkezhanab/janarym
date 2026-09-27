@@ -1,0 +1,78 @@
+{
+  "identifier" : "janarym_storekit_config",
+  "nonConsumableProducts" : [],
+  "nonRenewingSubscriptions" : [],
+  "products" : [],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "kk_KZ",
+    "_storefront" : "KAZ",
+    "_storeKitErrors" : []
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "janarym_subscriptions",
+      "localizations" : [],
+      "name" : "Janarym Жазылымдар",
+      "performanceModeProductIdentifier" : "",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "5000",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "premium_monthly_001",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Күніне 50 сұрақ, камера арқылы AI көру, Жалпы + Оқу + Сауда режимдері",
+              "displayName" : "Janarym Premium",
+              "locale" : "kk_KZ"
+            },
+            {
+              "description" : "50 запросов в день, AI-зрение через камеру, режимы Общий + Чтение + Покупки",
+              "displayName" : "Janarym Premium",
+              "locale" : "ru_RU"
+            }
+          ],
+          "productID" : "kz.janarym.premium.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Premium Monthly",
+          "subscriptionGroupID" : "janarym_subscriptions",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "15000",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "vip_monthly_001",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Шексіз сұрақтар, барлық режимдер, жанды дауыстық ассистент және жоғары сапалы сурет талдауы",
+              "displayName" : "Janarym VIP",
+              "locale" : "kk_KZ"
+            },
+            {
+              "description" : "Безлимитные запросы, все режимы, живой голосовой ассистент и высокое качество анализа изображений",
+              "displayName" : "Janarym VIP",
+              "locale" : "ru_RU"
+            }
+          ],
+          "productID" : "kz.janarym.vip.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "VIP Monthly",
+          "subscriptionGroupID" : "janarym_subscriptions",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

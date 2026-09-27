@@ -1,0 +1,11 @@
+name = "janarym-openai-proxy"
+main = "src/index.js"
+compatibility_date = "2026-04-08"
+
+[observability]
+enabled = true
+
+[vars]
+# Non-secret: used for Firebase JWT audience verification
+# OPENAI_API_KEY must be set via: npx wrangler secret put OPENAI_API_KEY
+FIREBASE_PROJECT_ID = "janarym-ai"

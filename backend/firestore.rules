@@ -1,0 +1,200 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ──────────────────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return request.auth.uid == uid;
+    }
+
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && getUserRole() == 'admin';
+    }
+
+    function isMentor() {
+      return isSignedIn() && getUserRole() == 'mentor';
+    }
+
+    function isDeveloper() {
+      return isSignedIn() && getUserRole() == 'developer';
+    }
+
+    function isParent() {
+      return isSignedIn() && getUserRole() == 'parent';
+    }
+
+    function isPrivileged() {
+      return isAdmin() || isMentor() || isDeveloper() || isParent();
+    }
+
+    function canReadUser(uid) {
+      return isOwner(uid) ||
+        isAdmin() ||
+        isDeveloper() ||
+        (isMentor() && resource.data.mentorId == request.auth.uid) ||
+        (isParent() && resource.data.parentUid == request.auth.uid) ||
+        (isParent() && hasPendingLinkRequest(uid, request.auth.uid));
+    }
+
+    function canReadPresence(uid) {
+      return isOwner(uid) ||
+        isAdmin() ||
+        isDeveloper() ||
+        (isMentor() &&
+         get(/databases/$(database)/documents/users/$(uid)).data.mentorId == request.auth.uid) ||
+        (isParent() &&
+         get(/databases/$(database)/documents/users/$(uid)).data.parentUid == request.auth.uid);
+    }
+
+    function hasPendingLinkRequest(childUid, parentUid) {
+      let requestId = childUid + "_" + parentUid;
+      return exists(/databases/$(database)/documents/linkRequests/$(requestId)) &&
+        get(/databases/$(database)/documents/linkRequests/$(requestId)).data.status == 'pending';
+    }
+
+    // The child must have initiated a link request at some point — a parent
+    // cannot attach themselves to an arbitrary account.
+    function hasLinkRequest(childUid, parentUid) {
+      return exists(/databases/$(database)/documents/linkRequests/$(childUid + "_" + parentUid));
+    }
+
+    // ── users collection ─────────────────────────────────────────────────
+    match /users/{uid} {
+      // Өзін, admin/developer, mentor өз member-лерін, parent өз children-ін оқи алады
+      allow read: if isSignedIn() && canReadUser(uid);
+
+      // Жаңа профиль жасауға өзі (тек member рөлімен), admin немесе developer рұқсатты
+      allow create: if isSignedIn() && (
+        (isOwner(uid) && request.resource.data.role == 'member') ||
+        isAdmin() ||
+        isDeveloper()
+      );
+
+      // Жаңарту: өзі (role өзгерте алмайды), admin/developer немесе parent link approve кезінде
+      allow update: if isSignedIn() && (
+        (isOwner(uid) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])) ||
+        (isParent() &&
+         hasLinkRequest(uid, request.auth.uid) &&
+         request.resource.data.parentUid == request.auth.uid &&
+         request.resource.data.isLinked == true &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['parentUid', 'isLinked'])) ||
+        isAdmin() ||
+        isDeveloper()
+      );
+
+      // Admin немесе developer жоя алады
+      allow delete: if isAdmin() || isDeveloper();
+
+      // ── ai_photos sub-collection ────────────────────────────────────
+      match /ai_photos/{photoId} {
+        allow read: if isSignedIn() && (isOwner(uid) || isAdmin() || isDeveloper());
+        allow create: if isSignedIn() && isOwner(uid);
+        allow update: if isSignedIn() && (isOwner(uid) || isAdmin() || isDeveloper());
+        allow delete: if isSignedIn() && (isOwner(uid) || isAdmin() || isDeveloper());
+      }
+
+      // ── symptoms sub-collection ─────────────────────────────────────
+      match /symptoms/{symptomId} {
+        allow read: if isSignedIn() && (isOwner(uid) || isAdmin() || isDeveloper());
+        allow create: if isSignedIn() && isOwner(uid);
+        allow update: if isSignedIn() && (isOwner(uid) || isAdmin() || isDeveloper());
+        allow delete: if isSignedIn() && (isOwner(uid) || isAdmin() || isDeveloper());
+      }
+    }
+
+    // ── applications collection ──────────────────────────────────────────
+    match /applications/{appId} {
+      // Өзінің өтінімін оқу / admin / mentor / developer
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin() ||
+        isMentor() ||
+        isDeveloper()
+      );
+
+      // Кез-келген авторизацияланған пайдаланушы жаңа өтінім жібере алады
+      allow create: if isSignedIn() && (
+        (request.resource.data.userId == request.auth.uid &&
+         request.resource.data.status == 'pending') ||
+        isAdmin() ||
+        isDeveloper()
+      );
+
+      // Status-ты тек admin/mentor/developer өзгерте алады
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        isMentor() ||
+        isDeveloper() ||
+        (resource.data.userId == request.auth.uid &&
+         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status']))
+      );
+
+      // Admin немесе developer жоя алады
+      allow delete: if isAdmin() || isDeveloper();
+    }
+
+    // ── presence collection ──────────────────────────────────────────────
+    match /presence/{uid} {
+      // Тек өзі жаза алады
+      allow write: if isSignedIn() && isOwner(uid);
+
+      // Өзінен басқа тек admin/developer, өз mentor-ы немесе linked parent оқи алады
+      allow read: if isSignedIn() && canReadPresence(uid);
+    }
+
+    // ── discoveryTokens collection ──────────────────────────────────────
+    match /discoveryTokens/{tokenId} {
+      // A child reads one code it learned over BLE; nobody may enumerate the
+      // collection and harvest every parent UID.
+      allow get: if isSignedIn();
+      allow list: if isAdmin() || isDeveloper();
+
+      allow create, update: if isSignedIn() &&
+        request.resource.data.uid == request.auth.uid;
+
+      allow delete: if isSignedIn() && (
+        resource.data.uid == request.auth.uid ||
+        isAdmin() ||
+        isDeveloper()
+      );
+    }
+
+    // ── linkRequests collection ─────────────────────────────────────────
+    match /linkRequests/{requestId} {
+      allow read: if isSignedIn() && (
+        resource.data.childUid == request.auth.uid ||
+        resource.data.parentUid == request.auth.uid ||
+        isAdmin() ||
+        isDeveloper()
+      );
+
+      allow create: if isSignedIn() &&
+        request.resource.data.childUid == request.auth.uid &&
+        request.resource.data.status == 'pending';
+
+      allow update: if isSignedIn() && (
+        (resource.data.parentUid == request.auth.uid &&
+         request.resource.data.childUid == resource.data.childUid &&
+         request.resource.data.parentUid == resource.data.parentUid &&
+         request.resource.data.status == 'accepted') ||
+        isAdmin() ||
+        isDeveloper()
+      );
+
+      allow delete: if isSignedIn() && (
+        resource.data.childUid == request.auth.uid ||
+        resource.data.parentUid == request.auth.uid ||
+        isAdmin() ||
+        isDeveloper()
+      );
+    }
+  }
+}
